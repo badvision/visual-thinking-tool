@@ -1521,36 +1521,58 @@
   function getSampleGraph() {
     return {
       nodes: [
-        { id: "cn",  label: "Current Norm",  color: "#dc2626", x: 200, y: 300 },
-        { id: "dn",  label: "Desired Norm",  color: "#16a34a", x: 600, y: 300 },
-        { id: "b1",  label: "Skip retros",             color: "#6366f1", x: 120, y: 140 },
-        { id: "b2",  label: "Heroic firefighting",     color: "#6366f1", x: 220, y: 100 },
-        { id: "b3",  label: "No time to document",     color: "#6366f1", x:  80, y: 300 },
-        { id: "b4",  label: "Blameless post-mortems",  color: "#6366f1", x: 560, y: 120 },
-        { id: "b5",  label: "Weekly demo habit",       color: "#6366f1", x: 700, y: 140 },
-        { id: "b6",  label: "Pair on hard problems",   color: "#6366f1", x: 760, y: 300 },
-        { id: "b7",  label: "Pressure to ship fast",   color: "#f59e0b", x: 400, y:  80 },
-        { id: "b8",  label: "Tech debt ignored",       color: "#6366f1", x: 100, y: 460 },
-        { id: "b9",  label: "Psychological safety",    color: "#6366f1", x: 660, y: 460 },
-        { id: "b10", label: "Definition of Done",      color: "#6366f1", x: 780, y: 460 }
+        // Layer 1: opposing norm poles
+        { id: "cn",   label: "Move fast, fix later",     color: "#dc2626", x: 150, y: 400 },
+        { id: "dn",   label: "Build with intention",     color: "#16a34a", x: 750, y: 400 },
+        // Layer 2: fulcrum
+        { id: "team", label: "Team",                     color: "#6366f1", x: 450, y: 400 },
+        // Layer 3: paired practices — current-norm side (red)
+        { id: "p1a",  label: "Skip retros",              color: "#f87171", x: 150, y: 200 },
+        { id: "p2a",  label: "Heroic firefighting",      color: "#f87171", x: 100, y: 300 },
+        { id: "p3a",  label: "No time to document",      color: "#f87171", x: 120, y: 500 },
+        { id: "p4a",  label: "Tech debt ignored",        color: "#f87171", x: 180, y: 580 },
+        { id: "p5a",  label: "Ship first, fix later",    color: "#f87171", x: 200, y: 250 },
+        // Layer 3: paired practices — desired-norm side (green)
+        { id: "p1b",  label: "Regular retros",           color: "#4ade80", x: 750, y: 200 },
+        { id: "p2b",  label: "Blameless post-mortems",   color: "#4ade80", x: 800, y: 300 },
+        { id: "p3b",  label: "Living documentation",     color: "#4ade80", x: 780, y: 500 },
+        { id: "p4b",  label: "Continuous refactoring",   color: "#4ade80", x: 720, y: 580 },
+        { id: "p5b",  label: "Definition of Done",       color: "#4ade80", x: 700, y: 250 },
+        // Layer 4: constant realities (amber)
+        { id: "cr1",  label: "Pressure to ship",         color: "#f59e0b", x: 400, y: 560 },
+        { id: "cr2",  label: "Legacy codebase",          color: "#f59e0b", x: 470, y: 620 },
+        { id: "cr3",  label: "Headcount limits",         color: "#f59e0b", x: 530, y: 560 }
       ],
       edges: [
-        { id: "e1",  source: "b1",  target: "cn", type: "attract", weight: 0.85 },
-        { id: "e2",  source: "b2",  target: "cn", type: "attract", weight: 0.90 },
-        { id: "e3",  source: "b3",  target: "cn", type: "attract", weight: 0.75 },
-        { id: "e4",  source: "b7",  target: "cn", type: "attract", weight: 0.95 },
-        { id: "e5",  source: "b8",  target: "cn", type: "attract", weight: 0.80 },
-        { id: "e6",  source: "b4",  target: "dn", type: "attract", weight: 0.80 },
-        { id: "e7",  source: "b5",  target: "dn", type: "attract", weight: 0.70 },
-        { id: "e8",  source: "b6",  target: "dn", type: "attract", weight: 0.75 },
-        { id: "e9",  source: "b9",  target: "dn", type: "attract", weight: 0.85 },
-        { id: "e10", source: "b10", target: "dn", type: "attract", weight: 0.90 },
-        { id: "e11", source: "cn",  target: "dn", type: "repel",   weight: 0.90 },
-        { id: "e12", source: "b7",  target: "dn", type: "repel",   weight: 0.85 },
-        { id: "e13", source: "b2",  target: "dn", type: "repel",   weight: 0.70 },
-        { id: "e14", source: "b8",  target: "dn", type: "repel",   weight: 0.60 },
-        { id: "e15", source: "b7",  target: "b4", type: "repel",   weight: 0.65 },
-        { id: "e16", source: "b7",  target: "b9", type: "repel",   weight: 0.70 }
+        // Norm poles repel each other
+        { id: "e01", source: "cn",   target: "dn",   type: "repel",   weight: 0.90 },
+        // Team attracted to both norms equally
+        { id: "e02", source: "team", target: "cn",   type: "attract", weight: 0.60 },
+        { id: "e03", source: "team", target: "dn",   type: "attract", weight: 0.60 },
+        // Pair 1 — Reflection habits
+        { id: "e04", source: "p1a",  target: "cn",   type: "attract", weight: 0.75 },
+        { id: "e05", source: "p1b",  target: "dn",   type: "attract", weight: 0.75 },
+        { id: "e06", source: "p1a",  target: "p1b",  type: "repel",   weight: 0.80 },
+        // Pair 2 — Incident response
+        { id: "e07", source: "p2a",  target: "cn",   type: "attract", weight: 0.85 },
+        { id: "e08", source: "p2b",  target: "dn",   type: "attract", weight: 0.80 },
+        { id: "e09", source: "p2a",  target: "p2b",  type: "repel",   weight: 0.75 },
+        // Pair 3 — Knowledge management
+        { id: "e10", source: "p3a",  target: "cn",   type: "attract", weight: 0.70 },
+        { id: "e11", source: "p3b",  target: "dn",   type: "attract", weight: 0.70 },
+        { id: "e12", source: "p3a",  target: "p3b",  type: "repel",   weight: 0.70 },
+        // Pair 4 — Technical quality
+        { id: "e13", source: "p4a",  target: "cn",   type: "attract", weight: 0.80 },
+        { id: "e14", source: "p4b",  target: "dn",   type: "attract", weight: 0.75 },
+        { id: "e15", source: "p4a",  target: "p4b",  type: "repel",   weight: 0.72 },
+        // Pair 5 — Delivery standards
+        { id: "e16", source: "p5a",  target: "cn",   type: "attract", weight: 0.78 },
+        { id: "e17", source: "p5b",  target: "dn",   type: "attract", weight: 0.85 },
+        { id: "e18", source: "p5a",  target: "p5b",  type: "repel",   weight: 0.80 },
+        // Constant realities attracted to Team only
+        { id: "e19", source: "cr1",  target: "team", type: "attract", weight: 0.70 },
+        { id: "e20", source: "cr2",  target: "team", type: "attract", weight: 0.55 },
+        { id: "e21", source: "cr3",  target: "team", type: "attract", weight: 0.50 }
       ]
     };
   }
