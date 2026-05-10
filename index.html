@@ -383,6 +383,7 @@
     <button class="tb-btn" id="btn-zoom-in" title="Zoom In">+</button>
     <button class="tb-btn" id="btn-zoom-reset" title="Reset View">⌂</button>
     <button class="tb-btn" id="btn-zoom-out" title="Zoom Out">−</button>
+    <button class="tb-btn" id="btn-fit" title="Fit All Nodes in View">Fit</button>
   </div>
   <div class="tb-sep"></div>
   <button class="tb-btn" id="btn-theme" title="Toggle Light/Dark Mode">☀</button>
@@ -401,6 +402,8 @@
       <g id="nodes-g"></g>
       <line id="rubber-band" x1="0" y1="0" x2="0" y2="0" style="display:none"/>
     </g>
+    <!-- Screen-space indicator layer (outside canvas transform) -->
+    <g id="indicators-g"></g>
   </svg>
 
   <!-- Properties Panel -->
@@ -598,11 +601,23 @@
   // Zoom behavior
   const zoom = d3.zoom()
     .scaleExtent([0.1, 4])
+    .filter((event) => {
+      // Allow wheel events (scroll to zoom)
+      if (event.type === 'wheel') return true;
+      // Only handle mousedown to start drag
+      if (event.type !== 'mousedown') return false;
+      // Allow left-click (0), middle-click (1), and right-click (2) panning
+      return event.button === 0 || event.button === 1 || event.button === 2;
+    })
     .on('zoom', (event) => {
       canvasG.attr('transform', event.transform);
+      updateIndicators(event.transform);
     });
 
   svg.call(zoom).on('dblclick.zoom', null);
+
+  // Suppress context menu so right-click drag doesn't trigger it
+  svg.on('contextmenu', (event) => event.preventDefault());
 
   // Prevent default scroll behavior on SVG
   svgEl.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
@@ -763,12 +778,112 @@
     // Update node positions
     nodesG.selectAll('g.node-group')
       .attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
+
+    // Update off-screen indicators
+    updateIndicators(d3.zoomTransform(svgEl));
+  }
+
+  // ── Off-screen Node Indicators ────────────────────────────
+  const indicatorsG = d3.select('#indicators-g');
+  const INDICATOR_MARGIN = 24;   // px from SVG edge
+  const INDICATOR_SIZE  = 13;    // half-width of the triangle
+
+  function updateIndicators(transform) {
+    const w = svgEl.clientWidth;
+    const h = svgEl.clientHeight;
+
+    // Collect nodes that are off-screen
+    const offscreen = [];
+    graph.nodes.forEach(node => {
+      if (node.x == null || node.y == null) return;
+      const sx = transform.applyX(node.x);
+      const sy = transform.applyY(node.y);
+      if (sx >= 0 && sx <= w && sy >= 0 && sy <= h) return; // visible
+
+      // Clamp to edge with margin
+      const cx = Math.max(INDICATOR_MARGIN, Math.min(w - INDICATOR_MARGIN, sx));
+      const cy = Math.max(INDICATOR_MARGIN, Math.min(h - INDICATOR_MARGIN, sy));
+
+      // Angle from clamped edge position pointing toward node screen position
+      const angle = Math.atan2(sy - cy, sx - cx); // radians
+
+      const defaultFill = document.body.classList.contains('dark') ? '#818cf8' : '#6366f1';
+      offscreen.push({
+        id: node.id,
+        cx,
+        cy,
+        angle,
+        fill: node.color || defaultFill,
+        node
+      });
+    });
+
+    // Data join
+    const sel = indicatorsG.selectAll('g.off-indicator')
+      .data(offscreen, d => d.id);
+
+    sel.exit().remove();
+
+    const enter = sel.enter().append('g')
+      .attr('class', 'off-indicator')
+      .style('cursor', 'pointer')
+      .on('click', (event, d) => {
+        event.stopPropagation();
+        // Animate viewport to bring the node into view
+        const W = svgEl.clientWidth;
+        const H = svgEl.clientHeight;
+        const currentT = d3.zoomTransform(svgEl);
+        const tx = W / 2 - currentT.k * d.node.x;
+        const ty = H / 2 - currentT.k * d.node.y;
+        svg.transition().duration(400)
+          .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(currentT.k));
+      });
+
+    // Triangle polygon (pointing right before rotation)
+    enter.append('polygon')
+      .attr('points', `${INDICATOR_SIZE},0 ${-INDICATOR_SIZE},${-INDICATOR_SIZE} ${-INDICATOR_SIZE},${INDICATOR_SIZE}`);
+
+    // Circle backing for hit area
+    enter.append('circle')
+      .attr('r', INDICATOR_SIZE + 3)
+      .attr('fill', 'transparent');
+
+    // Update positions and rotation for both enter + update
+    const merged = enter.merge(sel);
+
+    merged.attr('transform', d => `translate(${d.cx},${d.cy}) rotate(${d.angle * 180 / Math.PI})`);
+
+    merged.select('polygon')
+      .attr('fill', d => d.fill)
+      .attr('opacity', 0.82)
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 1.2);
+  }
+
+  // ── Fit to View ────────────────────────────────────────────
+  function fitToView() {
+    if (graph.nodes.length === 0) return;
+    const W = svgEl.clientWidth;
+    const H = svgEl.clientHeight;
+    const PAD = 60;
+    const xs = graph.nodes.map(n => n.x).filter(v => v != null);
+    const ys = graph.nodes.map(n => n.y).filter(v => v != null);
+    if (xs.length === 0) return;
+    const x0 = Math.min(...xs), x1 = Math.max(...xs);
+    const y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const spanX = x1 - x0 || 1;
+    const spanY = y1 - y0 || 1;
+    const scale = Math.min((W - PAD * 2) / spanX, (H - PAD * 2) / spanY, 2);
+    const tx = W / 2 - scale * (x0 + x1) / 2;
+    const ty = H / 2 - scale * (y0 + y1) / 2;
+    svg.transition().duration(500)
+      .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
   }
 
   // ── Node Drag (Move mode) ───────────────────────────────────
   function nodeDragBehavior() {
     return d3.drag()
-      .filter((event) => !connectMode)
+      .filter((event) => !connectMode && event.button === 0)
       .on('start', (event, d) => {
         if (!event.active) simulation.alphaTarget(0.3).restart();
         d.fx = d.x;
@@ -1175,6 +1290,9 @@
   document.getElementById('btn-zoom-reset').addEventListener('click', () => {
     svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity);
   });
+  document.getElementById('btn-fit').addEventListener('click', () => {
+    fitToView();
+  });
 
   // ── Physics Controls ───────────────────────────────────────
   const physicsPanel = document.getElementById('physics-panel');
@@ -1225,6 +1343,7 @@
     height = svgEl.clientHeight;
     simulation.force("center", d3.forceCenter(width / 2, height / 2));
     simulation.alpha(0.1).restart();
+    updateIndicators(d3.zoomTransform(svgEl));
   });
 
   // ── Init ──────────────────────────────────────────────────
