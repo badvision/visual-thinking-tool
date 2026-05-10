@@ -375,8 +375,8 @@
   <button class="tb-btn" id="btn-undo" title="Undo (Cmd+Z)">↩ Undo</button>
   <button class="tb-btn" id="btn-redo" title="Redo (Cmd+Shift+Z)">↪ Redo</button>
   <div class="tb-sep"></div>
-  <button class="tb-btn" id="btn-export">Export JSON</button>
-  <button class="tb-btn" id="btn-import">Import JSON</button>
+  <button class="tb-btn" id="btn-export">Save</button>
+  <button class="tb-btn" id="btn-import">Load</button>
   <input type="file" id="import-file" accept=".json">
   <div class="tb-sep"></div>
   <button class="tb-btn" id="btn-mode" title="Toggle Connect Mode">Connect Mode</button>
@@ -477,6 +477,7 @@
   let edgeDragSource = null;
   let drawingEdge = null;   // { source: node } during shift+drag
   let nodeCount = 0;        // for default labels
+  let currentFilename = 'visual_thinking.json';
 
   // ── Undo/Redo History ──────────────────────────────────────
   const history = [];
@@ -1446,11 +1447,14 @@
         weight: e.weight
       }))
     };
+    const name = prompt('Save as:', currentFilename);
+    if (!name) return; // user cancelled
+    currentFilename = name.endsWith('.json') ? name : name + '.json';
     const blob = new Blob([JSON.stringify(serializable, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'graph.json';
+    a.download = currentFilename;
     a.click();
     URL.revokeObjectURL(url);
   });
@@ -1467,6 +1471,7 @@
       try {
         const data = JSON.parse(ev.target.result);
         if (!data.nodes || !data.edges) throw new Error('Invalid format');
+        currentFilename = file.name || 'visual_thinking.json';
         clearGraph();
         graph.nodes = data.nodes;
         graph.edges = data.edges;
@@ -1477,7 +1482,7 @@
         });
         saveGraph();
         render();
-        alert('Graph imported successfully!');
+        alert('Graph loaded: ' + currentFilename);
       } catch(err) {
         alert('Import failed: ' + err.message);
       }
