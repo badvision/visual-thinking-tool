@@ -149,6 +149,7 @@
   .node-group .node-circle {
     stroke-width: 0;
     transition: filter 0.1s;
+    fill-opacity: 0.82;
   }
   .node-group .node-ring {
     fill: none;
@@ -489,13 +490,19 @@
   "use strict";
 
   // ── Constants ──────────────────────────────────────────────
-  const NODE_MIN_R = 28;
-  const NODE_PAD = 14;
-  const NODE_CHAR_W = 7; // approx px per character at 12px font
+  const NODE_MIN_R  = 28;
+  const NODE_PAD    = 14;
+  const NODE_CHAR_W = 7;   // approx px per character at 12px font
+  const NODE_H      = 34;  // fixed pill height (half = 17)
 
-  function nodeRadius(label) {
+  // Half-width of the pill for a given label
+  function nodeHalfW(label) {
     const text = label || '';
     return Math.max(NODE_MIN_R, (text.length * NODE_CHAR_W) / 2 + NODE_PAD);
+  }
+  // Effective radius for forceCollide / hit-testing (circumradius of pill)
+  function nodeRadius(label) {
+    return Math.sqrt(Math.pow(nodeHalfW(label), 2) + Math.pow(NODE_H / 2, 2));
   }
   let D_MIN = 40;
   let D_MAX = 300;
@@ -843,11 +850,13 @@
         startInlineEdit(event, d);
       });
 
-    nodeEnter.append('circle')
-      .attr('class', 'node-circle');
+    nodeEnter.append('rect')
+      .attr('class', 'node-circle')
+      .attr('ry', NODE_H / 2);
 
-    nodeEnter.append('circle')
-      .attr('class', 'node-ring');
+    nodeEnter.append('rect')
+      .attr('class', 'node-ring')
+      .attr('ry', NODE_H / 2 + 5);
 
     nodeEnter.append('text')
       .attr('class', 'node-label');
@@ -891,11 +900,17 @@
     const defaultNodeFill = document.body.classList.contains('dark') ? '#818cf8' : '#6366f1';
 
     nodeGroups.select('.node-circle')
-      .attr('r', d => nodeRadius(d.label))
-      .attr('fill', d => d.color || defaultNodeFill);
+      .attr('width',  d => nodeHalfW(d.label) * 2)
+      .attr('height', NODE_H)
+      .attr('x',      d => -nodeHalfW(d.label))
+      .attr('y',      -NODE_H / 2)
+      .attr('fill',   d => d.color || defaultNodeFill);
 
     nodeGroups.select('.node-ring')
-      .attr('r', d => nodeRadius(d.label) + 5);
+      .attr('width',  d => nodeHalfW(d.label) * 2 + 10)
+      .attr('height', NODE_H + 10)
+      .attr('x',      d => -nodeHalfW(d.label) - 5)
+      .attr('y',      -NODE_H / 2 - 5);
 
     nodeGroups.select('.node-label')
       .text(d => d.label);
@@ -1224,8 +1239,8 @@
         node.label = e.target.value;
         const grp = nodesG.selectAll('g.node-group').filter(d => d.id === node.id);
         grp.select('.node-label').text(node.label);
-        grp.select('.node-circle').attr('r', nodeRadius(node.label));
-        grp.select('.node-ring').attr('r', nodeRadius(node.label) + 5);
+        grp.select('.node-circle').attr('width', nodeHalfW(node.label)*2).attr('height', NODE_H).attr('x', -nodeHalfW(node.label)).attr('y', -NODE_H/2);
+        grp.select('.node-ring').attr('width', nodeHalfW(node.label)*2+10).attr('height', NODE_H+10).attr('x', -nodeHalfW(node.label)-5).attr('y', -NODE_H/2-5);
         simulation.force("collide", d3.forceCollide(d => nodeRadius(d.label) + 4));
         saveGraph();
       });
@@ -1407,8 +1422,8 @@
       d.label = newLabel;
       const grp = nodesG.selectAll('g.node-group').filter(nd => nd.id === d.id);
       grp.select('.node-label').text(d.label);
-      grp.select('.node-circle').attr('r', nodeRadius(d.label));
-      grp.select('.node-ring').attr('r', nodeRadius(d.label) + 5);
+      grp.select('.node-circle').attr('width', nodeHalfW(d.label)*2).attr('height', NODE_H).attr('x', -nodeHalfW(d.label)).attr('y', -NODE_H/2);
+      grp.select('.node-ring').attr('width', nodeHalfW(d.label)*2+10).attr('height', NODE_H+10).attr('x', -nodeHalfW(d.label)-5).attr('y', -NODE_H/2-5);
       simulation.force("collide", d3.forceCollide(dn => nodeRadius(dn.label) + 4));
       if (selectedId === d.id) {
         const inp = document.getElementById('node-label-input');
@@ -1497,9 +1512,9 @@
 
   function findNodeAtPoint(x, y) {
     return graph.nodes.find(n => {
-      const dx = (n.x || 0) - x;
-      const dy = (n.y || 0) - y;
-      return Math.sqrt(dx*dx + dy*dy) < nodeRadius(n.label) + 6;
+      const hw = nodeHalfW(n.label) + 6;
+      const hh = NODE_H / 2 + 6;
+      return Math.abs((n.x || 0) - x) < hw && Math.abs((n.y || 0) - y) < hh;
     });
   }
 
