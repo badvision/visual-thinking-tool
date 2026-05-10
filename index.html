@@ -176,8 +176,23 @@
     transition: stroke-opacity 0.1s;
   }
   .edge-line.selected {
-    stroke-dasharray: 6 3;
     filter: brightness(1.3);
+  }
+  .edge-line.repel {
+    stroke-dasharray: 8 5;
+  }
+
+  .edge-type-row {
+    display: flex;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--prop-input-color);
+  }
+  .edge-type-row label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
   }
   .edge-hit {
     fill: none;
@@ -378,6 +393,7 @@
   <button class="tb-btn" id="btn-export">Save</button>
   <button class="tb-btn" id="btn-import">Load</button>
   <input type="file" id="import-file" accept=".json">
+  <button class="tb-btn" id="btn-sample">Sample</button>
   <div class="tb-sep"></div>
   <button class="tb-btn" id="btn-mode" title="Toggle Connect Mode">Connect Mode</button>
   <span id="mode-label">Move</span>
@@ -468,6 +484,15 @@
   let D_MIN = 40;
   let D_MAX = 300;
   let CHARGE = -600;
+
+  function linkDistance(d) {
+    const type = d.type || 'attract';
+    if (type === 'repel') return physDmin + (d.weight ?? 0.5) * (physDmax - physDmin + 100);
+    return physDmax - (d.weight ?? 0.5) * (physDmax - physDmin);
+  }
+  function linkStrength(d) {
+    return (d.type || 'attract') === 'repel' ? 0.4 : 0.8;
+  }
 
   // ── State ──────────────────────────────────────────────────
   const graph = { version: "1.0", nodes: [], edges: [] };
@@ -561,7 +586,8 @@
       id: uuid(),
       source: sourceId,
       target: targetId,
-      weight: 0.5
+      weight: 0.5,
+      type: 'attract'
     };
     graph.edges.push(edge);
     if (!skipHistory) {
@@ -654,7 +680,8 @@
         id: e.id,
         source: typeof e.source === 'object' ? e.source.id : e.source,
         target: typeof e.target === 'object' ? e.target.id : e.target,
-        weight: e.weight
+        weight: e.weight,
+        type: e.type || 'attract'
       }))
     };
     try {
@@ -730,8 +757,8 @@
     .force("collide", d3.forceCollide(d => nodeRadius(d.label) + 4))
     .force("link", d3.forceLink()
       .id(d => d.id)
-      .distance(d => physDmax - d.weight * (physDmax - physDmin))
-      .strength(0.8)
+      .distance(linkDistance)
+      .strength(linkStrength)
     )
     .on("tick", ticked);
 
@@ -774,6 +801,7 @@
 
     edgeGroups.select('.edge-line')
       .classed('selected', d => d.id === selectedId)
+      .classed('repel', d => (d.type || 'attract') === 'repel')
       .attr('stroke', d => colorScale(d.weight))
       .attr('stroke-width', d => widthScale(d.weight));
 
@@ -871,8 +899,9 @@
         .attr('x2', x2).attr('y2', y2);
     });
 
-    // Update edge colors/widths on tick too
+    // Update edge colors/widths/style on tick too
     edgesG.selectAll('.edge-line')
+      .classed('repel', d => (d.type || 'attract') === 'repel')
       .attr('stroke', d => colorScale(d.weight))
       .attr('stroke-width', d => widthScale(d.weight));
 
@@ -1228,10 +1257,18 @@
       const tgtLabel = getNodeLabel(edge.target);
 
       panelHeader.textContent = 'Edge Properties';
+      const edgeType = edge.type || 'attract';
       panelBody.innerHTML = `
         <div class="prop-row">
           <div class="prop-label">Connection</div>
           <div style="font-size:12px; color:#475569;">${escHtml(srcLabel)} → ${escHtml(tgtLabel)}</div>
+        </div>
+        <div class="prop-row">
+          <div class="prop-label">Type</div>
+          <div class="edge-type-row">
+            <label><input type="radio" name="edge-type" value="attract" ${edgeType === 'attract' ? 'checked' : ''}> Attract</label>
+            <label><input type="radio" name="edge-type" value="repel" ${edgeType === 'repel' ? 'checked' : ''}> Repel</label>
+          </div>
         </div>
         <div class="prop-row">
           <div class="prop-label" style="display:flex; justify-content:space-between;">
@@ -1246,6 +1283,24 @@
         <button id="btn-delete-selected" style="margin-top:8px;padding:7px 0;width:100%;border:none;border-radius:6px;background:#fee2e2;color:#dc2626;font-size:12px;font-weight:600;cursor:pointer;">Delete Edge</button>
       `;
 
+      // Edge type radio buttons
+      panelBody.querySelectorAll('input[name="edge-type"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          const prevType = edge.type || 'attract';
+          const newType = e.target.value;
+          if (prevType === newType) return;
+          edge.type = newType;
+          pushHistory({
+            undo: () => { edge.type = prevType; simulation.force("link").distance(linkDistance).strength(linkStrength); simulation.alpha(0.3).restart(); render(); saveGraph(); },
+            redo: () => { edge.type = newType; simulation.force("link").distance(linkDistance).strength(linkStrength); simulation.alpha(0.3).restart(); render(); saveGraph(); }
+          });
+          simulation.force("link").distance(linkDistance).strength(linkStrength);
+          simulation.alpha(0.3).restart();
+          render();
+          saveGraph();
+        });
+      });
+
       let weightOnDragStart = edge.weight;
       const slider = document.getElementById('edge-weight-slider');
       slider.addEventListener('mousedown', () => { weightOnDragStart = edge.weight; });
@@ -1255,9 +1310,10 @@
         document.getElementById('weight-readout').textContent = edge.weight.toFixed(2);
         edgesG.selectAll('.edge-line')
           .filter(d => d.id === edge.id)
+          .classed('repel', (edge.type || 'attract') === 'repel')
           .attr('stroke', colorScale(edge.weight))
           .attr('stroke-width', widthScale(edge.weight));
-        simulation.force("link").distance(d => physDmax - d.weight * (physDmax - physDmin));
+        simulation.force("link").distance(linkDistance).strength(linkStrength);
         simulation.alpha(0.3).restart();
         saveGraph();
       });
@@ -1421,6 +1477,43 @@
     });
   }
 
+  function getSampleGraph() {
+    return {
+      nodes: [
+        { id: "cn",  label: "Current Norm",  color: "#dc2626", x: 200, y: 300 },
+        { id: "dn",  label: "Desired Norm",  color: "#16a34a", x: 600, y: 300 },
+        { id: "b1",  label: "Skip retros",             color: "#6366f1", x: 120, y: 140 },
+        { id: "b2",  label: "Heroic firefighting",     color: "#6366f1", x: 220, y: 100 },
+        { id: "b3",  label: "No time to document",     color: "#6366f1", x:  80, y: 300 },
+        { id: "b4",  label: "Blameless post-mortems",  color: "#6366f1", x: 560, y: 120 },
+        { id: "b5",  label: "Weekly demo habit",       color: "#6366f1", x: 700, y: 140 },
+        { id: "b6",  label: "Pair on hard problems",   color: "#6366f1", x: 760, y: 300 },
+        { id: "b7",  label: "Pressure to ship fast",   color: "#f59e0b", x: 400, y:  80 },
+        { id: "b8",  label: "Tech debt ignored",       color: "#6366f1", x: 100, y: 460 },
+        { id: "b9",  label: "Psychological safety",    color: "#6366f1", x: 660, y: 460 },
+        { id: "b10", label: "Definition of Done",      color: "#6366f1", x: 780, y: 460 }
+      ],
+      edges: [
+        { id: "e1",  source: "b1",  target: "cn", type: "attract", weight: 0.85 },
+        { id: "e2",  source: "b2",  target: "cn", type: "attract", weight: 0.90 },
+        { id: "e3",  source: "b3",  target: "cn", type: "attract", weight: 0.75 },
+        { id: "e4",  source: "b7",  target: "cn", type: "attract", weight: 0.95 },
+        { id: "e5",  source: "b8",  target: "cn", type: "attract", weight: 0.80 },
+        { id: "e6",  source: "b4",  target: "dn", type: "attract", weight: 0.80 },
+        { id: "e7",  source: "b5",  target: "dn", type: "attract", weight: 0.70 },
+        { id: "e8",  source: "b6",  target: "dn", type: "attract", weight: 0.75 },
+        { id: "e9",  source: "b9",  target: "dn", type: "attract", weight: 0.85 },
+        { id: "e10", source: "b10", target: "dn", type: "attract", weight: 0.90 },
+        { id: "e11", source: "cn",  target: "dn", type: "repel",   weight: 0.90 },
+        { id: "e12", source: "b7",  target: "dn", type: "repel",   weight: 0.85 },
+        { id: "e13", source: "b2",  target: "dn", type: "repel",   weight: 0.70 },
+        { id: "e14", source: "b8",  target: "dn", type: "repel",   weight: 0.60 },
+        { id: "e15", source: "b7",  target: "b4", type: "repel",   weight: 0.65 },
+        { id: "e16", source: "b7",  target: "b9", type: "repel",   weight: 0.70 }
+      ]
+    };
+  }
+
   // ── Toolbar Actions ────────────────────────────────────────
   document.getElementById('btn-undo').addEventListener('click', () => undoCmd());
   document.getElementById('btn-redo').addEventListener('click', () => redoCmd());
@@ -1444,7 +1537,8 @@
         id: e.id,
         source: typeof e.source === 'object' ? e.source.id : e.source,
         target: typeof e.target === 'object' ? e.target.id : e.target,
-        weight: e.weight
+        weight: e.weight,
+        type: e.type || 'attract'
       }))
     };
     const name = prompt('Save as:', currentFilename);
@@ -1491,6 +1585,29 @@
     e.target.value = '';
   });
 
+  document.getElementById('btn-sample').addEventListener('click', () => {
+    if (graph.nodes.length > 0) {
+      if (!confirm('Load sample graph? This will replace the current graph.')) return;
+    }
+    const sample = getSampleGraph();
+    clearGraph();
+    graph.nodes = sample.nodes;
+    graph.edges = sample.edges;
+    nodeCount = 12; // sample has 12 nodes; new nodes start from Node 13
+    history.splice(0);
+    historyIndex = -1;
+    saveGraph();
+    render();
+    // Place nodes at their initial positions before physics settles
+    graph.nodes.forEach(n => { n.fx = n.x; n.fy = n.y; });
+    simulation.alpha(0.3).restart();
+    setTimeout(() => {
+      graph.nodes.forEach(n => { n.fx = null; n.fy = null; });
+      simulation.alpha(0.3).restart();
+      setTimeout(() => fitToView(), 600);
+    }, 400);
+  });
+
   // Zoom controls
   document.getElementById('btn-zoom-in').addEventListener('click', () => {
     svg.transition().duration(300).call(zoom.scaleBy, 1.4);
@@ -1521,14 +1638,14 @@
   document.getElementById('sl-dmin').addEventListener('input', (e) => {
     physDmin = parseInt(e.target.value);
     document.getElementById('dmin-val').textContent = physDmin;
-    simulation.force("link").distance(d => physDmax - d.weight * (physDmax - physDmin));
+    simulation.force("link").distance(linkDistance).strength(linkStrength);
     simulation.alpha(0.3).restart();
   });
 
   document.getElementById('sl-dmax').addEventListener('input', (e) => {
     physDmax = parseInt(e.target.value);
     document.getElementById('dmax-val').textContent = physDmax;
-    simulation.force("link").distance(d => physDmax - d.weight * (physDmax - physDmin));
+    simulation.force("link").distance(linkDistance).strength(linkStrength);
     simulation.alpha(0.3).restart();
   });
 
