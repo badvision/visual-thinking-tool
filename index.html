@@ -543,7 +543,7 @@
       canvasG.attr('transform', event.transform);
     });
 
-  svg.call(zoom);
+  svg.call(zoom).on('dblclick.zoom', null);
 
   // Prevent default scroll behavior on SVG
   svgEl.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
