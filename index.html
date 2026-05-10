@@ -385,6 +385,121 @@
 
   /* import file input hidden */
   #import-file { display: none; }
+
+  /* Sample button highlight */
+  #btn-sample {
+    background: #6366f1;
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 0 0 2px rgba(99,102,241,0.4);
+  }
+  #btn-sample:hover { background: #4f46e5; }
+
+  /* About modal */
+  #about-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(3px);
+  }
+  #about-overlay.hidden { display: none; }
+  #about-modal {
+    background: var(--panel-bg);
+    color: #1e293b;
+    border-radius: 14px;
+    padding: 32px 36px;
+    max-width: 520px;
+    width: calc(100% - 48px);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+    line-height: 1.6;
+  }
+  #about-modal h2 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #6366f1;
+  }
+  #about-modal h3 {
+    margin: 20px 0 8px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.6;
+  }
+  .about-tagline {
+    margin: 0 0 16px;
+    font-size: 15px;
+    opacity: 0.75;
+  }
+  #about-modal p { margin: 0 0 12px; font-size: 14px; }
+  .about-sample-callout {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: rgba(99,102,241,0.12);
+    border: 1.5px solid rgba(99,102,241,0.4);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .about-sample-icon {
+    font-size: 22px;
+    line-height: 1;
+    margin-top: 1px;
+    flex-shrink: 0;
+    color: #6366f1;
+  }
+  .about-sample-callout kbd {
+    display: inline-block;
+    background: #6366f1;
+    color: #fff;
+    border-radius: 5px;
+    padding: 1px 7px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .about-list {
+    margin: 0 0 8px;
+    padding-left: 18px;
+    font-size: 13px;
+  }
+  .about-list li { margin-bottom: 5px; }
+  .about-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(128,128,128,0.2);
+  }
+  .about-show-check {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    cursor: pointer;
+    opacity: 0.75;
+  }
+  #about-close-btn {
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  #about-close-btn:hover { background: #4f46e5; }
+  body.dark #about-modal { color: #e2e8f0; }
 </style>
 </head>
 <body>
@@ -413,7 +528,46 @@
     <button class="tb-btn" id="btn-fit" title="Fit All Nodes in View">Fit</button>
   </div>
   <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-about" title="About this tool">? About</button>
   <button class="tb-btn" id="btn-theme" title="Toggle Light/Dark Mode">☀</button>
+</div>
+
+<!-- About modal -->
+<div id="about-overlay">
+  <div id="about-modal">
+    <h2>Visual Thinking Tool</h2>
+    <p class="about-tagline">Map goals, challenges, and the forces between them.</p>
+
+    <p>Nodes represent ideas, goals, or realities. Edges represent the relationship between them — whether they <strong>attract</strong> (pull together) or <strong>repel</strong> (push apart). The physics engine shows you where equilibrium actually lands.</p>
+
+    <div class="about-sample-callout">
+      <span class="about-sample-icon">▶</span>
+      <div>
+        <strong>See it in action — click <kbd>Sample</kbd> in the toolbar</strong><br>
+        Loads a team navigating two competing norms. Watch how practices on each side pull the Team node toward the norm they reinforce.
+      </div>
+    </div>
+
+    <h3>Quick Start</h3>
+    <ul class="about-list">
+      <li><strong>Add a node</strong> — double-click empty canvas</li>
+      <li><strong>Connect nodes</strong> — Shift+drag from one node to another, or use Connect Mode in the toolbar</li>
+      <li><strong>Set edge type</strong> — select an edge; choose Attract or Repel in the panel</li>
+      <li><strong>Adjust force strength</strong> — drag the weight slider (stronger = shorter for attract, farther for repel)</li>
+      <li><strong>Edit / delete</strong> — click to select, then edit in the panel or press Delete</li>
+      <li><strong>Undo / redo</strong> — Cmd+Z / Cmd+Shift+Z</li>
+      <li><strong>Pan</strong> — drag canvas, or right/middle-click drag</li>
+      <li><strong>Zoom</strong> — scroll wheel; Fit button to frame everything</li>
+      <li><strong>Save / Load</strong> — saves a JSON file you can reload later</li>
+    </ul>
+
+    <div class="about-footer">
+      <label class="about-show-check">
+        <input type="checkbox" id="about-show-on-start" checked> Show on start
+      </label>
+      <button id="about-close-btn">Get started →</button>
+    </div>
+  </div>
 </div>
 
 <!-- Main area -->
@@ -1756,6 +1910,41 @@
       graph.nodes.forEach(n => { n.fx = null; n.fy = null; });
       simulation.alpha(0.05).restart();
     }, 800);
+  }
+
+  // ── About Modal ────────────────────────────────────────────
+  const aboutOverlay  = document.getElementById('about-overlay');
+  const aboutCheckbox = document.getElementById('about-show-on-start');
+  const aboutCloseBtn = document.getElementById('about-close-btn');
+
+  function showAbout() {
+    aboutOverlay.classList.remove('hidden');
+    const pref = localStorage.getItem('vtg-show-about');
+    aboutCheckbox.checked = pref !== 'false';
+  }
+  function hideAbout() {
+    aboutOverlay.classList.add('hidden');
+  }
+
+  aboutCloseBtn.addEventListener('click', () => {
+    localStorage.setItem('vtg-show-about', aboutCheckbox.checked ? 'true' : 'false');
+    hideAbout();
+  });
+
+  aboutOverlay.addEventListener('click', (e) => {
+    if (e.target === aboutOverlay) {
+      localStorage.setItem('vtg-show-about', aboutCheckbox.checked ? 'true' : 'false');
+      hideAbout();
+    }
+  });
+
+  document.getElementById('btn-about').addEventListener('click', showAbout);
+
+  // Show on first visit or if preference is true
+  if (localStorage.getItem('vtg-show-about') !== 'false') {
+    showAbout();
+  } else {
+    aboutOverlay.classList.add('hidden');
   }
 
 })();
