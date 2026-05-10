@@ -1701,13 +1701,7 @@
       edges: [
         // Norm poles repel each other
         { id: "e01", source: "cn",   target: "dn",   type: "repel",   weight: 0.90 },
-        // Team attracted to current norm and its practices
-        { id: "e02", source: "team", target: "cn",   type: "attract", weight: 0.60 },
-        { id: "e03", source: "team", target: "p1a",  type: "attract", weight: 0.50 },
-        { id: "e03b",source: "team", target: "p2a",  type: "attract", weight: 0.50 },
-        { id: "e03c",source: "team", target: "p3a",  type: "attract", weight: 0.50 },
-        { id: "e03d",source: "team", target: "p4a",  type: "attract", weight: 0.50 },
-        { id: "e03e",source: "team", target: "p5a",  type: "attract", weight: 0.50 },
+        // Team starts unconnected — user draws links to show where the team actually is
         // Pair 1 — Reflection habits
         { id: "e04", source: "p1a",  target: "cn",   type: "attract", weight: 0.75 },
         { id: "e05", source: "p1b",  target: "dn",   type: "attract", weight: 0.75 },
