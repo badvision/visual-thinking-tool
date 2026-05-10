@@ -7,9 +7,58 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  /* ── CSS Variables (light mode defaults) ── */
+  :root {
+    --canvas-bg: #f8fafc;
+    --node-fill: #6366f1;
+    --toolbar-bg: #1e293b;
+    --toolbar-color: #f1f5f9;
+    --toolbar-title: #94a3b8;
+    --toolbar-sep: #334155;
+    --tb-btn-bg: #334155;
+    --tb-btn-color: #e2e8f0;
+    --tb-btn-hover: #475569;
+    --panel-bg: #fff;
+    --panel-border: #e2e8f0;
+    --panel-header-color: #64748b;
+    --panel-header-border: #f1f5f9;
+    --prop-label-color: #64748b;
+    --prop-input-color: #1e293b;
+    --prop-input-border: #e2e8f0;
+    --physics-bg: #fff;
+    --physics-border: #e2e8f0;
+    --physics-title-color: #475569;
+    --physics-label-color: #64748b;
+    --mode-label-color: #64748b;
+  }
+
+  body.dark {
+    --canvas-bg: #0f172a;
+    --node-fill: #818cf8;
+    --toolbar-bg: #1e293b;
+    --toolbar-color: #f1f5f9;
+    --toolbar-title: #94a3b8;
+    --toolbar-sep: #334155;
+    --tb-btn-bg: #334155;
+    --tb-btn-color: #e2e8f0;
+    --tb-btn-hover: #475569;
+    --panel-bg: #1e293b;
+    --panel-border: #334155;
+    --panel-header-color: #94a3b8;
+    --panel-header-border: #334155;
+    --prop-label-color: #94a3b8;
+    --prop-input-color: #e2e8f0;
+    --prop-input-border: #475569;
+    --physics-bg: #1e293b;
+    --physics-border: #334155;
+    --physics-title-color: #94a3b8;
+    --physics-label-color: #94a3b8;
+    --mode-label-color: #94a3b8;
+  }
+
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #f8fafc;
+    background: var(--canvas-bg);
     overflow: hidden;
     height: 100vh;
     width: 100vw;
@@ -26,8 +75,8 @@
     gap: 6px;
     padding: 0 12px;
     height: 48px;
-    background: #1e293b;
-    color: #f1f5f9;
+    background: var(--toolbar-bg);
+    color: var(--toolbar-color);
     flex-shrink: 0;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
@@ -35,7 +84,7 @@
   #toolbar .title {
     font-weight: 600;
     font-size: 14px;
-    color: #94a3b8;
+    color: var(--toolbar-title);
     letter-spacing: 0.05em;
     margin-right: 8px;
   }
@@ -43,7 +92,7 @@
   .tb-sep {
     width: 1px;
     height: 24px;
-    background: #334155;
+    background: var(--toolbar-sep);
     margin: 0 4px;
   }
 
@@ -54,14 +103,14 @@
     padding: 5px 10px;
     border: none;
     border-radius: 6px;
-    background: #334155;
-    color: #e2e8f0;
+    background: var(--tb-btn-bg);
+    color: var(--tb-btn-color);
     font-size: 12px;
     cursor: pointer;
     transition: background 0.15s;
     white-space: nowrap;
   }
-  .tb-btn:hover { background: #475569; }
+  .tb-btn:hover { background: var(--tb-btn-hover); }
   .tb-btn.active { background: #6366f1; color: #fff; }
   .tb-btn.danger:hover { background: #dc2626; }
 
@@ -71,7 +120,7 @@
   /* mode indicator */
   #mode-label {
     font-size: 11px;
-    color: #64748b;
+    color: var(--mode-label-color);
     margin-left: 4px;
   }
 
@@ -87,7 +136,7 @@
   #canvas-svg {
     flex: 1;
     display: block;
-    background: #f8fafc;
+    background: var(--canvas-bg);
     cursor: default;
   }
 
@@ -149,8 +198,8 @@
   /* ── Properties Panel ── */
   #props-panel {
     width: 220px;
-    background: #fff;
-    border-left: 1px solid #e2e8f0;
+    background: var(--panel-bg);
+    border-left: 1px solid var(--panel-border);
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -171,10 +220,10 @@
     padding: 12px 14px 8px;
     font-size: 11px;
     font-weight: 600;
-    color: #64748b;
+    color: var(--panel-header-color);
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--panel-header-border);
   }
 
   #props-panel .panel-body {
@@ -185,14 +234,15 @@
   }
 
   .prop-row { display: flex; flex-direction: column; gap: 4px; }
-  .prop-label { font-size: 11px; color: #64748b; font-weight: 500; }
+  .prop-label { font-size: 11px; color: var(--prop-label-color); font-weight: 500; }
 
   .prop-input {
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--prop-input-border);
     border-radius: 6px;
     padding: 6px 8px;
     font-size: 13px;
-    color: #1e293b;
+    color: var(--prop-input-color);
+    background: var(--panel-bg);
     outline: none;
     transition: border-color 0.15s;
   }
@@ -221,8 +271,8 @@
     bottom: 12px;
     left: 12px;
     z-index: 50;
-    background: #fff;
-    border: 1px solid #e2e8f0;
+    background: var(--physics-bg);
+    border: 1px solid var(--physics-border);
     border-radius: 10px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.1);
     width: 200px;
@@ -236,7 +286,7 @@
     cursor: pointer;
     font-size: 12px;
     font-weight: 600;
-    color: #475569;
+    color: var(--physics-title-color);
     user-select: none;
   }
   #physics-toggle::after {
@@ -259,7 +309,7 @@
     display: flex;
     justify-content: space-between;
     font-size: 11px;
-    color: #64748b;
+    color: var(--physics-label-color);
   }
   .phys-slider { width: 100%; accent-color: #6366f1; }
 
@@ -334,6 +384,8 @@
     <button class="tb-btn" id="btn-zoom-reset" title="Reset View">⌂</button>
     <button class="tb-btn" id="btn-zoom-out" title="Zoom Out">−</button>
   </div>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-theme" title="Toggle Light/Dark Mode">☀</button>
 </div>
 
 <!-- Main area -->
@@ -399,7 +451,14 @@
   "use strict";
 
   // ── Constants ──────────────────────────────────────────────
-  const NODE_RADIUS = 28;
+  const NODE_MIN_R = 28;
+  const NODE_PAD = 14;
+  const NODE_CHAR_W = 7; // approx px per character at 12px font
+
+  function nodeRadius(label) {
+    const text = label || '';
+    return Math.max(NODE_MIN_R, (text.length * NODE_CHAR_W) / 2 + NODE_PAD);
+  }
   let D_MIN = 40;
   let D_MAX = 300;
   let CHARGE = -200;
@@ -552,7 +611,7 @@
   const simulation = d3.forceSimulation()
     .force("charge", d3.forceManyBody().strength(() => physCharge))
     .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collide", d3.forceCollide(NODE_RADIUS + 4))
+    .force("collide", d3.forceCollide(d => nodeRadius(d.label) + 4))
     .force("link", d3.forceLink()
       .id(d => d.id)
       .distance(d => physDmax - d.weight * (physDmax - physDmin))
@@ -623,12 +682,10 @@
       });
 
     nodeEnter.append('circle')
-      .attr('class', 'node-circle')
-      .attr('r', NODE_RADIUS);
+      .attr('class', 'node-circle');
 
     nodeEnter.append('circle')
-      .attr('class', 'node-ring')
-      .attr('r', NODE_RADIUS + 5);
+      .attr('class', 'node-ring');
 
     nodeEnter.append('text')
       .attr('class', 'node-label');
@@ -669,11 +726,17 @@
 
     nodeGroups.classed('selected', d => d.id === selectedId);
 
+    const defaultNodeFill = document.body.classList.contains('dark') ? '#818cf8' : '#6366f1';
+
     nodeGroups.select('.node-circle')
-      .attr('fill', d => d.color || '#6366f1');
+      .attr('r', d => nodeRadius(d.label))
+      .attr('fill', d => d.color || defaultNodeFill);
+
+    nodeGroups.select('.node-ring')
+      .attr('r', d => nodeRadius(d.label) + 5);
 
     nodeGroups.select('.node-label')
-      .text(d => truncate(d.label, 18));
+      .text(d => d.label);
 
     simulation.alpha(0.3).restart();
     updatePropsPanel();
@@ -849,10 +912,11 @@
 
       document.getElementById('node-label-input').addEventListener('input', (e) => {
         node.label = e.target.value;
-        nodesG.selectAll('g.node-group')
-          .filter(d => d.id === node.id)
-          .select('.node-label')
-          .text(truncate(node.label, 18));
+        const grp = nodesG.selectAll('g.node-group').filter(d => d.id === node.id);
+        grp.select('.node-label').text(node.label);
+        grp.select('.node-circle').attr('r', nodeRadius(node.label));
+        grp.select('.node-ring').attr('r', nodeRadius(node.label) + 5);
+        simulation.force("collide", d3.forceCollide(d => nodeRadius(d.label) + 4));
         saveGraph();
       });
 
@@ -861,7 +925,7 @@
         nodesG.selectAll('g.node-group')
           .filter(d => d.id === node.id)
           .select('.node-circle')
-          .attr('fill', node.color);
+          .attr('fill', node.color || (document.body.classList.contains('dark') ? '#818cf8' : '#6366f1'));
         saveGraph();
       });
 
@@ -940,10 +1004,11 @@
     function commit() {
       const newLabel = labelEdit.value.trim() || d.label;
       d.label = newLabel;
-      nodesG.selectAll('g.node-group')
-        .filter(nd => nd.id === d.id)
-        .select('.node-label')
-        .text(truncate(d.label, 18));
+      const grp = nodesG.selectAll('g.node-group').filter(nd => nd.id === d.id);
+      grp.select('.node-label').text(d.label);
+      grp.select('.node-circle').attr('r', nodeRadius(d.label));
+      grp.select('.node-ring').attr('r', nodeRadius(d.label) + 5);
+      simulation.force("collide", d3.forceCollide(dn => nodeRadius(dn.label) + 4));
       if (selectedId === d.id) {
         const inp = document.getElementById('node-label-input');
         if (inp) inp.value = d.label;
@@ -988,12 +1053,33 @@
 
   btnMode.addEventListener('click', toggleConnectMode);
 
-  // ── Helpers ────────────────────────────────────────────────
-  function truncate(str, max) {
-    if (!str) return '';
-    return str.length > max ? str.slice(0, max - 1) + '…' : str;
+  // ── Theme Toggle ───────────────────────────────────────────
+  const btnTheme = document.getElementById('btn-theme');
+
+  function applyTheme(dark) {
+    document.body.classList.toggle('dark', dark);
+    btnTheme.textContent = dark ? '☽' : '☀';
+    // Re-apply node fills to pick up new default color
+    const defaultFill = dark ? '#818cf8' : '#6366f1';
+    nodesG.selectAll('g.node-group').select('.node-circle')
+      .attr('fill', d => d.color || defaultFill);
+    // Update canvas background (SVG doesn't inherit CSS vars automatically)
+    document.getElementById('canvas-svg').style.background = dark ? '#0f172a' : '#f8fafc';
   }
 
+  (function initTheme() {
+    const saved = localStorage.getItem('vtg-theme');
+    applyTheme(saved === 'dark');
+  })();
+
+  btnTheme.addEventListener('click', () => {
+    const isDark = document.body.classList.contains('dark');
+    const next = !isDark;
+    localStorage.setItem('vtg-theme', next ? 'dark' : 'light');
+    applyTheme(next);
+  });
+
+  // ── Helpers ────────────────────────────────────────────────
   function escHtml(str) {
     return String(str)
       .replace(/&/g, '&amp;')
@@ -1012,7 +1098,7 @@
     return graph.nodes.find(n => {
       const dx = (n.x || 0) - x;
       const dy = (n.y || 0) - y;
-      return Math.sqrt(dx*dx + dy*dy) < NODE_RADIUS + 6;
+      return Math.sqrt(dx*dx + dy*dy) < nodeRadius(n.label) + 6;
     });
   }
 
