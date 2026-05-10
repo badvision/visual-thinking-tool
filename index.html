@@ -921,6 +921,8 @@
   function updateIndicators(transform) {
     const w = svgEl.clientWidth;
     const h = svgEl.clientHeight;
+    const panelOpen = document.getElementById('props-panel').classList.contains('open');
+    const rightBound = w - INDICATOR_MARGIN - (panelOpen ? 220 : 0);
 
     // Collect nodes that are off-screen
     const offscreen = [];
@@ -928,10 +930,10 @@
       if (node.x == null || node.y == null) return;
       const sx = transform.applyX(node.x);
       const sy = transform.applyY(node.y);
-      if (sx >= 0 && sx <= w && sy >= 0 && sy <= h) return; // visible
+      if (sx >= 0 && sx <= (panelOpen ? w - 220 : w) && sy >= 0 && sy <= h) return; // visible
 
-      // Clamp to edge with margin
-      const cx = Math.max(INDICATOR_MARGIN, Math.min(w - INDICATOR_MARGIN, sx));
+      // Clamp to edge with margin, respecting panel on right
+      const cx = Math.max(INDICATOR_MARGIN, Math.min(rightBound, sx));
       const cy = Math.max(INDICATOR_MARGIN, Math.min(h - INDICATOR_MARGIN, sy));
 
       // Angle from clamped edge position pointing toward node screen position
@@ -1336,8 +1338,14 @@
     }
   }
 
-  function openPropsPanel() { propsPanel.classList.add('open'); }
-  function closePropsPanel() { propsPanel.classList.remove('open'); }
+  function openPropsPanel() {
+    propsPanel.classList.add('open');
+    updateIndicators(d3.zoomTransform(svgEl));
+  }
+  function closePropsPanel() {
+    propsPanel.classList.remove('open');
+    updateIndicators(d3.zoomTransform(svgEl));
+  }
 
   function getNodeLabel(ref) {
     const id = typeof ref === 'object' ? ref.id : ref;
