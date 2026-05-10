@@ -174,9 +174,16 @@
     stroke-linecap: round;
     cursor: pointer;
     transition: stroke-opacity 0.1s;
+    filter: url(#edge-shadow);
+  }
+  body.dark .edge-line {
+    filter: url(#edge-glow);
   }
   .edge-line.selected {
     filter: brightness(1.3);
+  }
+  body.dark .edge-line.selected {
+    filter: url(#edge-glow) brightness(1.3);
   }
   .edge-line.repel {
     stroke-dasharray: 8 5;
@@ -415,6 +422,15 @@
       <marker id="arrow" markerWidth="8" markerHeight="8" refX="20" refY="3" orient="auto">
         <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
       </marker>
+      <!-- Glow for dark mode -->
+      <filter id="edge-glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <!-- Drop-shadow for light mode -->
+      <filter id="edge-shadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="rgba(0,0,0,0.25)"/>
+      </filter>
     </defs>
     <g class="canvas" id="canvas-g">
       <g id="edges-g"></g>
@@ -763,9 +779,11 @@
     .on("tick", ticked);
 
   // ── Color & Width Scales ───────────────────────────────────
+  // Custom 3-stop scale: red (strong) → cornflower blue (mid) → deep blue (weak)
+  // Avoids the low-contrast lemon-yellow midpoint of RdYlBu
   const colorScale = d3.scaleSequential()
     .domain([0, 1])
-    .interpolator(t => d3.interpolateRdYlBu(1 - t));
+    .interpolator(t => d3.interpolateRgbBasis(["#3b82f6", "#6495ed", "#ef4444"])(t));
 
   const widthScale = d3.scaleLinear().domain([0, 1]).range([1, 4]);
 
