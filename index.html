@@ -554,17 +554,27 @@
       </div>
     </div>
 
-    <h3>Quick Start</h3>
+    <h3>Nodes</h3>
     <ul class="about-list">
-      <li><strong>Add a node</strong> — double-click empty canvas</li>
-      <li><strong>Connect nodes</strong> — Shift+drag from one node to another, or use Connect Mode in the toolbar</li>
-      <li><strong>Set edge type</strong> — select an edge; choose Attract or Repel in the panel</li>
-      <li><strong>Adjust force strength</strong> — drag the weight slider (stronger = shorter for attract, farther for repel)</li>
-      <li><strong>Edit / delete</strong> — click to select, then edit in the panel or press Delete</li>
-      <li><strong>Undo / redo</strong> — Cmd+Z / Cmd+Shift+Z</li>
+      <li><strong>Add</strong> — double-click empty canvas</li>
+      <li><strong>Add &amp; link</strong> — Shift+click a node, or Shift+drag from a node to an empty spot</li>
+      <li><strong>Edit / delete</strong> — click to select, edit in the panel or press Delete</li>
+      <li><strong>Rename inline</strong> — double-click a node</li>
+    </ul>
+
+    <h3>Edges</h3>
+    <ul class="about-list">
+      <li><strong>Connect two nodes</strong> — Shift+drag from one node onto another, or use Connect Mode</li>
+      <li><strong>Repel instead of attract</strong> — hold Cmd/Alt while linking (rubber band turns red)</li>
+      <li><strong>Change type / strength</strong> — select an edge, use the panel</li>
+    </ul>
+
+    <h3>Navigation</h3>
+    <ul class="about-list">
       <li><strong>Pan</strong> — drag canvas, or right/middle-click drag</li>
       <li><strong>Zoom</strong> — scroll wheel; Fit button to frame everything</li>
-      <li><strong>Save / Load</strong> — saves a JSON file you can reload later</li>
+      <li><strong>Undo / redo</strong> — Cmd+Z / Cmd+Shift+Z</li>
+      <li><strong>Save / Load</strong> — exports a JSON file you can reload later</li>
     </ul>
 
     <div class="about-footer">
@@ -684,6 +694,8 @@
   let connectMode = false;
   let edgeDragSource = null;
   let drawingEdge = null;   // { source: node } during shift+drag
+  let shiftNodeCreated = false; // suppress click handler after shift+drag creates a node
+  let recentLinkedNodeId = null; // tracks freshly-created linked node for immediate undo support
   let nodeCount = 0;        // for default labels
   let currentFilename = 'visual_thinking.json';
 
@@ -728,7 +740,7 @@
   }
 
   // ── Data Model ─────────────────────────────────────────────
-  function addNode(x, y, skipHistory) {
+  function addNode(x, y, skipHistory, color) {
     nodeCount++;
     const node = {
       id: uuid(),
@@ -736,7 +748,7 @@
       x: x,
       y: y,
       pinned: false,
-      color: "#6366f1"
+      color: color || "#6366f1"
     };
     graph.nodes.push(node);
     if (!skipHistory) {
@@ -784,6 +796,73 @@
     }
     saveGraph();
     return edge;
+  }
+
+  // Compute weight for a new edge based on drag distance vs existing edge distances from source
+  function computeWeightFromDist(sourceNode, dragDist) {
+    const connectedEdges = graph.edges.filter(e => {
+      const src = typeof e.source === 'object' ? e.source.id : e.source;
+      const tgt = typeof e.target === 'object' ? e.target.id : e.target;
+      return src === sourceNode.id || tgt === sourceNode.id;
+    });
+    if (connectedEdges.length === 0) return 0.5;
+    // Average distance of connected neighbor nodes
+    const avgDist = connectedEdges.reduce((sum, e) => {
+      const other = (typeof e.source === 'object' ? e.source.id : e.source) === sourceNode.id
+        ? (typeof e.target === 'object' ? e.target : graph.nodes.find(n => n.id === e.target))
+        : (typeof e.source === 'object' ? e.source : graph.nodes.find(n => n.id === e.source));
+      if (!other) return sum;
+      const dx = (other.x || 0) - (sourceNode.x || 0);
+      const dy = (other.y || 0) - (sourceNode.y || 0);
+      return sum + Math.sqrt(dx * dx + dy * dy);
+    }, 0) / connectedEdges.length;
+    // Shorter drag → stronger (higher weight), longer → weaker; clamp [0.1, 0.9]
+    const ratio = avgDist > 0 ? dragDist / avgDist : 1;
+    return Math.max(0.1, Math.min(0.9, 1 - (ratio - 0.5) * 0.5));
+  }
+
+  // Create a new node linked to sourceNode as a single undoable action
+  function createLinkedNode(x, y, sourceNode, weight, edgeType) {
+    nodeCount++;
+    const newNode = {
+      id: uuid(),
+      label: "Node " + nodeCount,
+      x: x,
+      y: y,
+      pinned: false,
+      color: sourceNode.color
+    };
+    const edge = {
+      id: uuid(),
+      source: sourceNode.id,
+      target: newNode.id,
+      weight: weight !== undefined ? weight : 0.5,
+      type: edgeType || 'attract'
+    };
+    graph.nodes.push(newNode);
+    graph.edges.push(edge);
+    pushHistory({
+      undo: () => {
+        graph.nodes = graph.nodes.filter(n => n.id !== newNode.id);
+        graph.edges = graph.edges.filter(e => e.id !== edge.id);
+        if (selectedId === newNode.id) { selectedId = null; selectedType = null; }
+      },
+      redo: () => {
+        graph.nodes.push(newNode);
+        graph.edges.push(edge);
+      }
+    });
+    saveGraph();
+    render();
+    hideHint();
+    recentLinkedNodeId = newNode.id;
+    selectElement(newNode.id, 'node');
+    updatePropsPanel();
+    setTimeout(() => {
+      const inp = document.getElementById('node-label-input');
+      if (inp) { inp.focus(); inp.select(); }
+    }, 50);
+    return newNode;
   }
 
   function deleteNode(id, skipHistory) {
@@ -1002,6 +1081,14 @@
       .on('click', (event, d) => {
         event.stopPropagation();
         if (connectMode) return; // handled by drag
+        // Shift+click: create a new linked node offset from this one
+        if (event.shiftKey) {
+          if (shiftNodeCreated) { shiftNodeCreated = false; return; }
+          const repel = event.metaKey || event.altKey;
+          const offset = 120 + nodeHalfW(d.label);
+          createLinkedNode((d.x || 0) + offset, (d.y || 0) + offset, d, 0.5, repel ? 'repel' : 'attract');
+          return;
+        }
         selectElement(d.id, 'node');
       })
       .on('dblclick', (event, d) => {
@@ -1227,7 +1314,10 @@
       .on('drag', (event, d) => {
         if (drawingEdge) {
           const [mx, my] = getCanvasPointer(event);
-          d3.select(rubberBand).attr('x2', mx).attr('y2', my);
+          const repel = event.sourceEvent && (event.sourceEvent.metaKey || event.sourceEvent.altKey);
+          d3.select(rubberBand)
+            .attr('x2', mx).attr('y2', my)
+            .attr('stroke', repel ? '#f87171' : '#94a3b8');
           return;
         }
         d.fx = event.x;
@@ -1235,12 +1325,24 @@
       })
       .on('end', (event, d) => {
         if (drawingEdge) {
-          d3.select(rubberBand).style('display', 'none');
+          d3.select(rubberBand).style('display', 'none').attr('stroke', '#94a3b8');
           const [mx, my] = getCanvasPointer(event);
+          const repel = event.sourceEvent && (event.sourceEvent.metaKey || event.sourceEvent.altKey);
+          const edgeType = repel ? 'repel' : 'attract';
           const target = findNodeAtPoint(mx, my);
           if (target && target.id !== drawingEdge.source.id) {
+            // Dropped on existing node: just connect them
             const edge = addEdge(drawingEdge.source.id, target.id);
-            if (edge) render();
+            if (edge) { edge.type = edgeType; render(); }
+          } else if (!target) {
+            // Dropped on empty canvas: create a new linked node there
+            const src = drawingEdge.source;
+            const dx = mx - (src.x || 0);
+            const dy = my - (src.y || 0);
+            const dragDist = Math.sqrt(dx * dx + dy * dy);
+            const weight = computeWeightFromDist(src, dragDist);
+            shiftNodeCreated = true;
+            createLinkedNode(mx, my, src, weight, edgeType);
           }
           drawingEdge = null;
           return;
@@ -1267,15 +1369,19 @@
       })
       .on('drag', (event, d) => {
         const [mx, my] = getCanvasPointer(event);
-        d3.select(rubberBand).attr('x2', mx).attr('y2', my);
+        const repel = event.sourceEvent && (event.sourceEvent.metaKey || event.sourceEvent.altKey);
+        d3.select(rubberBand)
+          .attr('x2', mx).attr('y2', my)
+          .attr('stroke', repel ? '#f87171' : '#94a3b8');
       })
       .on('end', (event, d) => {
-        d3.select(rubberBand).style('display', 'none');
+        d3.select(rubberBand).style('display', 'none').attr('stroke', '#94a3b8');
         const [mx, my] = getCanvasPointer(event);
+        const repel = event.sourceEvent && (event.sourceEvent.metaKey || event.sourceEvent.altKey);
         const target = findNodeAtPoint(mx, my);
         if (target && target.id !== edgeDragSource.id) {
           const edge = addEdge(edgeDragSource.id, target.id);
-          if (edge) render();
+          if (edge) { edge.type = repel ? 'repel' : 'attract'; render(); }
         }
         edgeDragSource = null;
       });
@@ -1317,7 +1423,19 @@
     const typing = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
 
     if ((event.metaKey || event.ctrlKey) && event.key === 'z' && !event.shiftKey) {
-      if (!typing) { event.preventDefault(); undoCmd(); }
+      // Allow undo even when label input is focused if the user hasn't modified it yet
+      // (i.e. it's the freshly-created linked node and label is still the default)
+      const isLinkedNodeInput = recentLinkedNodeId &&
+        active && active.id === 'node-label-input' &&
+        active.value === active.defaultValue;
+      if (!typing || isLinkedNodeInput) {
+        event.preventDefault();
+        if (isLinkedNodeInput) {
+          recentLinkedNodeId = null;
+          active.blur();
+        }
+        undoCmd();
+      }
       return;
     }
     if ((event.metaKey || event.ctrlKey) && (event.key === 'y' || (event.key === 'z' && event.shiftKey))) {
@@ -1396,6 +1514,7 @@
       const labelInp = document.getElementById('node-label-input');
       labelInp.addEventListener('focus', () => { labelOnFocus = node.label; });
       labelInp.addEventListener('input', (e) => {
+        if (recentLinkedNodeId === node.id) recentLinkedNodeId = null;
         node.label = e.target.value;
         const grp = nodesG.selectAll('g.node-group').filter(d => d.id === node.id);
         grp.select('.node-label').text(node.label);
